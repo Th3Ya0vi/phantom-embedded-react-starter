@@ -4,7 +4,7 @@ A modern, production-ready starter template for building Solana dApps with Phant
 
 ## Features
 
-- ⚡️ **Next.js 14** - Latest App Router with React Server Components
+- ⚡️ **Next.js 16** - Latest App Router with React Server Components
 - 👻 **Phantom SDK** - Integrated Phantom Browser & React SDK
 - 🎨 **Tailwind CSS** - Utility-first styling with custom design tokens
 - 🌗 **Dark Mode** - Built-in dark mode support
