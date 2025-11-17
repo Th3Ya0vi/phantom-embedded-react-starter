@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ConnexionProvider from "@/provider/ConnexionProvider";
+import { ThemeProvider } from "@/provider/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Phantom Embedded Wallet",
@@ -12,8 +14,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider>
+          <ConnexionProvider>
+            {children}
+          </ConnexionProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
