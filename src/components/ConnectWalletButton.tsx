@@ -44,7 +44,12 @@ export default function ConnectWalletButton() {
         try {
           // Using Solana web3.js to fetch balance
           const { Connection, PublicKey } = await import("@solana/web3.js");
-          const connection = new Connection(`https://api.${process.env.NEXT_PUBLIC_SOLANA_NETWORK}.solana.com`);
+          
+          // Use custom RPC URL if provided, otherwise use public mainnet
+          const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
+                         `https://api.${process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta'}.solana.com`;
+          
+          const connection = new Connection(rpcUrl);
           const publicKey = new PublicKey(accounts[0].address);
           const balanceInLamports = await connection.getBalance(publicKey);
           setBalance(balanceInLamports / 1e9); // Convert lamports to SOL
@@ -58,7 +63,7 @@ export default function ConnectWalletButton() {
     fetchBalance();
   }, [isConnected, accounts]);
 
-  const handleConnect = async (provider: "google" | "apple" | "phantom" | "injected") => {
+  const handleConnect = async (provider: "google" | "apple" | "injected") => {
     try {
       await connect({ provider });
       setIsModalOpen(false);
@@ -170,7 +175,7 @@ export default function ConnectWalletButton() {
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                Disconnect
+                Log out
               </button>
             </div>
           </div>
@@ -187,7 +192,7 @@ export default function ConnectWalletButton() {
         className="group flex items-center gap-3 px-6 py-3 bg-phantom text-white rounded-xl font-semibold hover:bg-phantom-dark focus:outline-none focus:ring-2 focus:ring-phantom-light transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-phantom/20 hover:shadow-xl hover:shadow-phantom/30"
       >
         <PhantomIcon className="w-6 h-6" />
-        <span>{isConnecting ? "Connecting..." : "Connect Wallet"}</span>
+        <span>{isConnecting ? "Connecting..." : "Login with Phantom"}</span>
       </button>
 
       <ConnectionModal

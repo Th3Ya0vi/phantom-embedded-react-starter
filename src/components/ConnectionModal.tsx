@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import PhantomIcon from "./icons/PhantomIcon";
 import GoogleIcon from "./icons/GoogleIcon";
 import AppleIcon from "./icons/AppleIcon";
 import ExtensionIcon from "./icons/ExtensionIcon";
@@ -9,7 +8,7 @@ import ExtensionIcon from "./icons/ExtensionIcon";
 interface ConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (provider: "google" | "apple" | "phantom" | "injected") => void;
+  onConnect: (provider: "google" | "apple" | "injected") => void;
   isConnecting: boolean;
   isPhantomAvailable: boolean;
   isExtensionInstalled: boolean;
@@ -58,13 +57,6 @@ export default function ConnectionModal({
       available: true,
     },
     {
-      id: "phantom",
-      name: "Phantom Embedded",
-      icon: <PhantomIcon className="w-8 h-8" />,
-      description: "Use Phantom embedded wallet",
-      available: isPhantomAvailable,
-    },
-    {
       id: "injected",
       name: "Browser Extension",
       icon: <ExtensionIcon className="w-8 h-8 text-phantom" />,
@@ -106,31 +98,11 @@ export default function ConnectionModal({
           </button>
         </div>
 
-        {/* Error message */}
-        {error && (
+        {/* Error message - only show actual connection errors, not session initialization errors */}
+        {error && !error.message.includes("No valid session found") && (
           <div className="mb-4 p-4 bg-orange/10 border border-orange rounded-lg">
             <p className="text-sm font-semibold text-orange mb-2">{error.message}</p>
-            {error.message.includes("session") && (
-              <div className="text-xs text-ink space-y-1 mt-2">
-                <p className="font-medium">Pour utiliser OAuth (Google, Apple, Phantom):</p>
-                <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>
-                    Créez une app sur{" "}
-                    <a
-                      href="https://phantom.app/developer"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-phantom hover:underline font-medium"
-                    >
-                      phantom.app/developer
-                    </a>
-                  </li>
-                  <li>Ajoutez votre NEXT_PUBLIC_PHANTOM_APP_ID dans .env.local</li>
-                  <li>Whitelistez votre callback URL dans le portail</li>
-                </ol>
-                <p className="mt-2 font-medium">💡 Essayez l'extension Phantom en attendant !</p>
-              </div>
-            )}
+            <p className="text-xs text-muted mt-2">Please try again or use a different connection method.</p>
           </div>
         )}
 
