@@ -23,7 +23,7 @@ interface WalletAccount {
 /**
  * ConnectWalletButton - Main wallet connection component
  * 
- * Phantom Connect SDK (Beta 24)
+ * Phantom Connect SDK (Beta 25)
  * @see https://docs.phantom.com
  * 
  * Uses the SDK's built-in modal for connection:
@@ -31,6 +31,7 @@ interface WalletAccount {
  * - useDiscoveredWallets() detects all available wallets via Wallet Standard & EIP-6963
  * - Modal handles Google, Apple, Phantom Login, and discovered wallet connections
  * - Theming is configured in ConnectionProvider via theme prop
+ * - Improved stability and bug fixes
  */
 export default function ConnectWalletButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
