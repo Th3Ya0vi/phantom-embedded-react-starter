@@ -1,10 +1,32 @@
 {
   "name": "phantom-embedded-react-starter",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Phantom Embedded Wallet React Starter",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@phantom/browser-sdk": "^1.0.0-beta.24",
+    "@phantom/react-sdk": "^1.0.0-beta.24",
+    "@solana/web3.js": "^1.95.0",
+    "@tailwindcss/postcss": "^4.1.17",
+    "lucide-react": "^0.553.0",
+    "next": "^16.0.7",
+    "postcss": "^8.5.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.0.7",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0"
   },
   "keywords": [],
   "author": "",
