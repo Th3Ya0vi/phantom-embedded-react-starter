@@ -1,28 +1,41 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   useDisconnect,
   useAccounts,
   usePhantom,
   useModal,
+  useDiscoveredWallets,
 } from "@phantom/react-sdk";
+import { Connection, PublicKey } from "@solana/web3.js";
 import PhantomIcon from "./icons/PhantomIcon";
+
+/**
+ * Type for wallet account from useAccounts hook
+ * Represents a connected wallet address with its type
+ */
+interface WalletAccount {
+  address: string;
+  addressType: string;
+}
 
 /**
  * ConnectWalletButton - Main wallet connection component
  * 
- * Phantom Connect SDK (Beta 22+)
+ * Phantom Connect SDK (Beta 24)
  * @see https://docs.phantom.com
  * 
  * Uses the SDK's built-in modal for connection:
  * - useModal() hook controls the built-in connection modal
- * - Modal handles Google, Apple, Phantom Login, and extension connections
+ * - useDiscoveredWallets() detects all available wallets via Wallet Standard & EIP-6963
+ * - Modal handles Google, Apple, Phantom Login, and discovered wallet connections
  * - Theming is configured in ConnectionProvider via theme prop
  */
 export default function ConnectWalletButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // SDK built-in modal hook
@@ -30,10 +43,14 @@ export default function ConnectWalletButton() {
 
   // Connection state hooks
   const { disconnect } = useDisconnect();
-  const accounts = useAccounts();
+  const accounts = useAccounts() as WalletAccount[] | null;
   
   // usePhantom provides isConnected, isLoading state
   const { isLoading: isSDKLoading, isConnected: phantomConnected } = usePhantom();
+
+  // Wallet discovery hook - detects all available wallets (runs in background)
+  // Note: Don't block UI on this - SDK handles wallet display in modal automatically
+  const { wallets: discoveredWallets } = useDiscoveredWallets();
 
   // Check connected state from both accounts and phantom hook
   const isConnected = (accounts && accounts.length > 0) || phantomConnected;
@@ -59,9 +76,6 @@ export default function ConnectWalletButton() {
     const fetchBalance = async () => {
       if (isConnected && primaryAddress) {
         try {
-          // Using Solana web3.js to fetch balance
-          const { Connection, PublicKey } = await import("@solana/web3.js");
-          
           // Use custom RPC URL if provided, otherwise use public mainnet
           const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
                          `https://api.${process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta'}.solana.com`;
@@ -80,8 +94,15 @@ export default function ConnectWalletButton() {
     fetchBalance();
   }, [isConnected, primaryAddress]);
 
+  // Log discovered wallets in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && discoveredWallets && discoveredWallets.length > 0) {
+      console.log('🔍 Discovered Wallets:', discoveredWallets);
+    }
+  }, [discoveredWallets]);
+
   // Handle disconnect
-  const handleDisconnect = async () => {
+  const handleDisconnect = useCallback(async () => {
     try {
       await disconnect();
       setIsDropdownOpen(false);
@@ -89,14 +110,23 @@ export default function ConnectWalletButton() {
     } catch (err) {
       console.error("Disconnect error:", err);
     }
-  };
+  }, [disconnect]);
+
+  // Handle copy address
+  const handleCopyAddress = useCallback(() => {
+    if (primaryAddress) {
+      navigator.clipboard.writeText(primaryAddress);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  }, [primaryAddress]);
 
   // Format address for display
-  const formatAddress = (address: string) => {
+  const formatAddress = (address: string): string => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
-  // Show loading state while SDK initializes
+  // Show loading state only while SDK initializes (not during wallet discovery)
   if (isSDKLoading) {
     return (
       <button
@@ -170,11 +200,7 @@ export default function ConnectWalletButton() {
             {/* Actions */}
             <div className="p-2">
               <button
-                onClick={() => {
-                  if (primaryAddress) {
-                    navigator.clipboard.writeText(primaryAddress);
-                  }
-                }}
+                onClick={handleCopyAddress}
                 className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-ink hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -185,7 +211,7 @@ export default function ConnectWalletButton() {
                     d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                   />
                 </svg>
-                Copy Address
+                {copySuccess ? "Copied!" : "Copy Address"}
               </button>
 
               <button
