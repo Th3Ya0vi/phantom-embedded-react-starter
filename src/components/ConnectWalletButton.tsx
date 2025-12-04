@@ -7,6 +7,7 @@ import {
   usePhantom,
   useModal,
   useDiscoveredWallets,
+  useSolana,
 } from "@phantom/react-sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
 import PhantomIcon from "./icons/PhantomIcon";
@@ -23,15 +24,16 @@ interface WalletAccount {
 /**
  * ConnectWalletButton - Main wallet connection component
  * 
- * Phantom Connect SDK (Beta 25)
- * @see https://docs.phantom.com
+ * Phantom Connect SDK (Beta 26)
+ * @see https://docs.phantom.com/sdks/react-sdk
  * 
  * Uses the SDK's built-in modal for connection:
  * - useModal() hook controls the built-in connection modal
+ * - useSolana() hook for Solana-specific operations (signMessage, signTransaction, signAndSendTransaction)
  * - useDiscoveredWallets() detects all available wallets via Wallet Standard & EIP-6963
  * - Modal handles Google, Apple, Phantom Login, and discovered wallet connections
  * - Theming is configured in ConnectionProvider via theme prop
- * - Improved stability and bug fixes
+ * - ConnectButton and ConnectBox components available for simpler implementations
  */
 export default function ConnectWalletButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -49,6 +51,10 @@ export default function ConnectWalletButton() {
   // usePhantom provides isConnected, isLoading state
   const { isLoading: isSDKLoading, isConnected: phantomConnected } = usePhantom();
 
+  // Beta 26: useSolana hook for Solana-specific operations
+  // Provides: address, signMessage, signTransaction, signAndSendTransaction
+  const { solana, isAvailable: isSolanaAvailable } = useSolana();
+
   // Wallet discovery hook - detects all available wallets (runs in background)
   // Note: Don't block UI on this - SDK handles wallet display in modal automatically
   const { wallets: discoveredWallets } = useDiscoveredWallets();
@@ -56,7 +62,7 @@ export default function ConnectWalletButton() {
   // Check connected state from both accounts and phantom hook
   const isConnected = (accounts && accounts.length > 0) || phantomConnected;
 
-  // Get the first account address safely
+  // Get the first account address safely from useAccounts hook
   const primaryAccount = accounts?.[0];
   const primaryAddress = primaryAccount?.address;
 
@@ -95,12 +101,22 @@ export default function ConnectWalletButton() {
     fetchBalance();
   }, [isConnected, primaryAddress]);
 
-  // Log discovered wallets in development
+  // Log discovered wallets and Solana hook status in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && discoveredWallets && discoveredWallets.length > 0) {
-      console.log('🔍 Discovered Wallets:', discoveredWallets);
+    if (process.env.NODE_ENV === 'development') {
+      if (discoveredWallets && discoveredWallets.length > 0) {
+        console.log('🔍 Discovered Wallets:', discoveredWallets);
+      }
+      if (isSolanaAvailable && solana) {
+        console.log('🟣 Solana Hook Active:', {
+          isAvailable: isSolanaAvailable,
+          hasSignMessage: !!solana.signMessage,
+          hasSignTransaction: !!solana.signTransaction,
+          hasSignAndSendTransaction: !!solana.signAndSendTransaction,
+        });
+      }
     }
-  }, [discoveredWallets]);
+  }, [discoveredWallets, solana, isSolanaAvailable]);
 
   // Handle disconnect
   const handleDisconnect = useCallback(async () => {

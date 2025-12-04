@@ -13,17 +13,21 @@ interface ConnectionProviderProps {
 /**
  * ConnectionProvider wraps the app with PhantomProvider for wallet connectivity
  * 
- * Phantom Connect SDK (Beta 25)
- * @see https://docs.phantom.com
+ * Phantom Connect SDK (Beta 26)
+ * @see https://docs.phantom.com/sdks/react-sdk
  * 
- * Features in Beta 25:
+ * Features in Beta 26:
  * - ConnectButton component for ready-to-use connection UI
+ * - ConnectBox component for inline embedded connection UI
+ * - useSolana hook for Solana-specific operations (signMessage, signTransaction)
+ * - useEthereum hook for Ethereum-specific operations
+ * - useAutoConfirm hook for auto-confirming transactions (injected provider only)
  * - useDiscoveredWallets hook for wallet discovery via Wallet Standard & EIP-6963
  * - useModal hook controls the built-in connection modal
  * - Full TypeScript support with proper types
  * - Automatic wallet detection for injected providers
- * - Providers: "google", "apple", "phantom", "x", "tiktok", "injected"
- * - Bug fixes and stability improvements
+ * - Providers: "google", "apple", "phantom", "injected"
+ * - Improved theming with pre-built and custom themes
  */
 export default function ConnectionProvider({ children }: ConnectionProviderProps) {
   // Debug: Log environment variables (only in development)
