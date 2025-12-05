@@ -83,9 +83,12 @@ export default function ConnectWalletButton() {
     const fetchBalance = async () => {
       if (isConnected && primaryAddress) {
         try {
-          // Use custom RPC URL if provided, otherwise use public mainnet
-          const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
-                         `https://api.${process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'mainnet-beta'}.solana.com`;
+          // RPC URL must be set in environment
+          const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+          if (!rpcUrl) {
+            console.warn("NEXT_PUBLIC_SOLANA_RPC_URL not configured - balance fetch skipped");
+            return;
+          }
           
           const connection = new Connection(rpcUrl);
           const publicKey = new PublicKey(primaryAddress);

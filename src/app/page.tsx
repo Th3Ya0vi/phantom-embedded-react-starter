@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import ConnectWalletButton from "@/components/ConnectWalletButton";
+import TransactionDemo from "@/components/TransactionDemo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAccounts } from "@phantom/react-sdk";
 
@@ -44,26 +45,35 @@ export default function Home() {
               <ConnectWalletButton />
             </div>
 
-            {/* Info Section */}
-            <div className="pt-6 border-t border-gray-200">
-              <h2 className="text-xl font-semibold mb-4 text-ink">
-                Getting Started
-              </h2>
-              <ul className="space-y-3 text-text-default">
-                <li className="flex items-start gap-3">
-                  <span className="text-brand font-bold">1.</span>
-                  <span>Click "Login with Phantom" above</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-brand font-bold">2.</span>
-                  <span>Choose your sign-in method (Google, Apple, Phantom, or discovered wallets)</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-brand font-bold">3.</span>
-                  <span>Start building your dApp!</span>
-                </li>
-              </ul>
-            </div>
+            {/* Transaction Demo - Only shows when connected */}
+            {isConnected && (
+              <div className="pt-6 border-t border-gray-200">
+                <TransactionDemo />
+              </div>
+            )}
+
+            {/* Info Section - Only shows when not connected */}
+            {!isConnected && (
+              <div className="pt-6 border-t border-gray-200">
+                <h2 className="text-xl font-semibold mb-4 text-ink">
+                  Getting Started
+                </h2>
+                <ul className="space-y-3 text-text-default">
+                  <li className="flex items-start gap-3">
+                    <span className="text-brand font-bold">1.</span>
+                    <span>Click "Login with Phantom" above</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-brand font-bold">2.</span>
+                    <span>Choose your sign-in method (Google, Apple, Phantom, or discovered wallets)</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-brand font-bold">3.</span>
+                    <span>Start building your dApp!</span>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 

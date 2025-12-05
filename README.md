@@ -7,6 +7,7 @@ A modern, production-ready starter template for building Solana dApps with the [
 - ⚡️ **Next.js 16** - Latest App Router with React Server Components
 - 👻 **Phantom Connect SDK** - Integrated wallet with built-in modal UI
 - 🔑 **OAuth Support** - Google, Apple, and Phantom Login authentication
+- 💸 **Transaction Demo** - Sign message & send SOL examples
 - 🎨 **Tailwind CSS** - Utility-first styling with custom design tokens
 - 🌗 **Dark Mode** - Built-in dark mode support
 - 📱 **Responsive** - Mobile-first responsive design
@@ -98,6 +99,7 @@ phantom-embedded-react-starter/
 │   │   └── page.tsx         # Home page
 │   ├── components/          # React components
 │   │   ├── ConnectWalletButton.tsx  # Main wallet connection UI
+│   │   ├── TransactionDemo.tsx      # Sign message & send SOL demo
 │   │   ├── ThemeToggle.tsx  # Dark/light mode toggle
 │   │   └── icons/           # Icon components
 │   └── provider/
