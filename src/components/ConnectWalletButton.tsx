@@ -33,7 +33,7 @@ interface WalletAccount {
  * - useDiscoveredWallets() detects all available wallets via Wallet Standard & EIP-6963
  * - Modal handles Google, Apple, Phantom Login, and discovered wallet connections
  * - Theming is configured in ConnectionProvider via theme prop
- * - ConnectButton and ConnectBox components available for simpler implementations
+ * - ConnectButton component available for simpler implementations
  */
 export default function ConnectWalletButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

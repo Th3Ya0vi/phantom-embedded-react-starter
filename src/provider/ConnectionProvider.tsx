@@ -16,18 +16,20 @@ interface ConnectionProviderProps {
  * Phantom Connect SDK (Beta 26)
  * @see https://docs.phantom.com/sdks/react-sdk
  * 
- * Features in Beta 26:
- * - ConnectButton component for ready-to-use connection UI
- * - ConnectBox component for inline embedded connection UI
- * - useSolana hook for Solana-specific operations (signMessage, signTransaction)
- * - useEthereum hook for Ethereum-specific operations
- * - useAutoConfirm hook for auto-confirming transactions (injected provider only)
- * - useDiscoveredWallets hook for wallet discovery via Wallet Standard & EIP-6963
- * - useModal hook controls the built-in connection modal
- * - Full TypeScript support with proper types
- * - Automatic wallet detection for injected providers
- * - Providers: "google", "apple", "phantom", "injected"
- * - Improved theming with pre-built and custom themes
+ * Config options:
+ * - appId: App ID from Phantom Portal (required for OAuth providers)
+ * - providers: ["google", "apple", "phantom", "injected"]
+ * - addressTypes: [AddressType.solana, AddressType.ethereum]
+ * - authOptions.redirectUrl: OAuth callback URL (required for Google/Apple)
+ * - embeddedWalletType: "user-wallet" | "app-wallet" (optional)
+ * 
+ * Hooks available:
+ * - useSolana(): { solana, isAvailable } - for signAndSendTransaction
+ * - useEthereum(): { ethereum, isAvailable } - for Ethereum operations
+ * - useModal(): { open, isOpened } - control connection modal
+ * - useAccounts(): WalletAccount[] - get connected accounts
+ * - usePhantom(): { isConnected, isLoading } - connection state
+ * - useDiscoveredWallets(): { wallets } - detected wallets
  */
 export default function ConnectionProvider({ children }: ConnectionProviderProps) {
   // Debug: Log environment variables (only in development)
@@ -37,6 +39,13 @@ export default function ConnectionProvider({ children }: ConnectionProviderProps
       rpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL ? '✅ Set' : '❌ Missing',
     });
   }
+
+  // Get the redirect URL for OAuth callbacks
+  const redirectUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/auth/callback`
+    : process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+      : '';
 
   return (
     <PhantomProvider
@@ -53,8 +62,10 @@ export default function ConnectionProvider({ children }: ConnectionProviderProps
           "phantom",    // Phantom Login
           "injected",   // Browser extension + discovered wallets via Wallet Standard
         ],
-        // User wallet connects to existing Phantom ecosystem
-        embeddedWalletType: "user-wallet",
+        // OAuth callback configuration (required for Google/Apple providers)
+        authOptions: {
+          redirectUrl,
+        },
       }}
       // Theme for built-in modal UI (darkTheme or lightTheme available)
       theme={darkTheme}
