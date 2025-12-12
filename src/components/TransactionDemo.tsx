@@ -13,6 +13,8 @@ import {
 /**
  * TransactionDemo - Demonstrates embedded wallet transaction capabilities
  * 
+ * Phantom Connect SDK v1.0.0 (Stable Release)
+ * 
  * The login itself verifies ownership (OAuth proves identity).
  * This demo shows seamless one-click transactions - no extension popups!
  * 
@@ -47,7 +49,11 @@ export default function TransactionDemo() {
 
     setIsSendingTx(true);
     try {
+      // v1.0.0: getPublicKey returns string | null, must check for null
       const publicKey = await solana.getPublicKey();
+      if (!publicKey) {
+        throw new Error("Wallet not connected or public key unavailable");
+      }
       const userPubkey = new PublicKey(publicKey);
 
       // Connect to Solana - RPC URL must be set in env
@@ -70,10 +76,12 @@ export default function TransactionDemo() {
       transaction.feePayer = userPubkey;
 
       // Sign and send in one step - the embedded wallet magic!
+      // v1.0.0: signAndSendTransaction returns { signature: string }
       const txResult = await solana.signAndSendTransaction(transaction);
       
       console.log("✅ Transaction sent:", txResult);
-      const txId = txResult.signature || txResult.hash || "";
+      // v1.0.0: Result contains signature property
+      const txId = txResult.signature || "";
       showResult("success", `✓ Sent! TX: ${txId.slice(0, 16)}...`);
     } catch (error) {
       console.error("❌ Transaction error:", error);
