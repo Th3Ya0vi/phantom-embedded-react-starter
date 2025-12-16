@@ -59,8 +59,9 @@ export default function ConnectionProvider({ children }: ConnectionProviderProps
   return (
     <PhantomProvider
       config={{
-        // Network support - Solana blockchain
-        addressTypes: [AddressType.solana],
+        // Network support - Solana and Ethereum blockchains
+        // This enables wallet discovery via Wallet Standard (Solana) and EIP-6963 (Ethereum)
+        addressTypes: [AddressType.solana, AddressType.ethereum],
         // App ID from Phantom Portal (required for embedded providers)
         appId: process.env.NEXT_PUBLIC_PHANTOM_APP_ID || "",
         // Authentication providers available to users

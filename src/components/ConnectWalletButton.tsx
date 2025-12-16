@@ -71,8 +71,13 @@ export default function ConnectWalletButton() {
   const { isInstalled: isExtensionInstalled, isLoading: isCheckingExtension } = useIsExtensionInstalled();
 
   // Wallet discovery hook - detects all available wallets (runs in background)
-  // v1.0.0: Now includes refetch method
-  const { wallets: discoveredWallets, refetch: refetchWallets } = useDiscoveredWallets();
+  // v1.0.0: Now includes refetch method, isLoading, and error states
+  const { 
+    wallets: discoveredWallets, 
+    refetch: refetchWallets,
+    isLoading: isDiscoveryLoading,
+    error: discoveryError,
+  } = useDiscoveredWallets();
 
   // Check connected state from both accounts and phantom hook
   const isConnected = (accounts && accounts.length > 0) || phantomConnected;
@@ -122,6 +127,18 @@ export default function ConnectWalletButton() {
   // Log v1.0.0 SDK features in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
+      // Log wallet discovery status
+      console.log('🔍 Wallet Discovery Status:', {
+        isLoading: isDiscoveryLoading,
+        error: discoveryError?.message || null,
+        walletsFound: discoveredWallets?.length ?? 0,
+        wallets: discoveredWallets?.map(w => ({
+          name: w.name,
+          id: w.id,
+          icon: w.icon ? '✓' : '✗',
+        })) ?? [],
+      });
+      
       // Log discovered wallets via Wallet Standard
       if (discoveredWallets && discoveredWallets.length > 0) {
         console.log('🔍 Discovered Wallets:', discoveredWallets);
@@ -152,7 +169,7 @@ export default function ConnectWalletButton() {
         console.log('🔑 Allowed Providers:', allowedProviders);
       }
     }
-  }, [discoveredWallets, solana, isSolanaAvailable, autoConfirmStatus, isCheckingExtension, isExtensionInstalled, user, allowedProviders]);
+  }, [discoveredWallets, isDiscoveryLoading, discoveryError, solana, isSolanaAvailable, autoConfirmStatus, isCheckingExtension, isExtensionInstalled, user, allowedProviders]);
 
   // Handle disconnect (v1.0.0: isDisconnecting state available)
   const handleDisconnect = useCallback(async () => {
