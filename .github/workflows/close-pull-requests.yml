@@ -1,0 +1,36 @@
+# Workflow to automatically close pull requests
+# This repository does not accept external contributions via PRs
+
+name: Close Pull Requests
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+jobs:
+  close-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Close Pull Request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Add a comment explaining why the PR is being closed
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `👋 Thank you for your interest in contributing!\n\n**Pull requests are not accepted for this repository.**\n\nThis repository is maintained as a read-only reference. If you have suggestions or found issues, please open an issue instead.\n\nThis PR will be automatically closed.`
+            });
+
+            // Close the pull request
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              state: 'closed'
+            });
+
+            console.log(`PR #${context.payload.pull_request.number} has been closed.`);
