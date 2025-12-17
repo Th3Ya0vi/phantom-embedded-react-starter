@@ -9,6 +9,7 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
+import { _env } from "@/config/_env";
 
 /**
  * TransactionDemo - Demonstrates embedded wallet transaction capabilities
@@ -51,7 +52,7 @@ export default function TransactionDemo() {
       const userPubkey = new PublicKey(publicKey);
 
       // Connect to Solana - RPC URL must be set in env
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+      const rpcUrl = _env.solanaRpcUrl;
       if (!rpcUrl) {
         throw new Error("NEXT_PUBLIC_SOLANA_RPC_URL not configured");
       }

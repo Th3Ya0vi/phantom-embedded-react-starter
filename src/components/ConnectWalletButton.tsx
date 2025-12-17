@@ -10,6 +10,7 @@ import {
   useSolana,
 } from "@phantom/react-sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { _env } from "@/config/_env";
 import PhantomIcon from "./icons/PhantomIcon";
 
 /**
@@ -84,7 +85,7 @@ export default function ConnectWalletButton() {
       if (isConnected && primaryAddress) {
         try {
           // RPC URL must be set in environment
-          const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+          const rpcUrl = _env.solanaRpcUrl;
           if (!rpcUrl) {
             console.warn("NEXT_PUBLIC_SOLANA_RPC_URL not configured - balance fetch skipped");
             return;
@@ -106,7 +107,7 @@ export default function ConnectWalletButton() {
 
   // Log discovered wallets and Solana hook status in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (_env.nodeEnv === 'development') {
       if (discoveredWallets && discoveredWallets.length > 0) {
         console.log('🔍 Discovered Wallets:', discoveredWallets);
       }
