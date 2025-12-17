@@ -2,6 +2,7 @@
 
 import { PhantomProvider, darkTheme, AddressType } from "@phantom/react-sdk";
 import { ReactNode } from "react";
+import { _env } from "@/config/_env";
 
 /**
  * Props for the ConnectionProvider component
@@ -42,18 +43,18 @@ interface ConnectionProviderProps {
  */
 export default function ConnectionProvider({ children }: ConnectionProviderProps) {
   // Debug: Log environment variables (only in development)
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  if (typeof window !== 'undefined' && _env.nodeEnv === 'development') {
     console.log('🔧 Phantom SDK v1.0.0 Environment Check:', {
-      appId: process.env.NEXT_PUBLIC_PHANTOM_APP_ID ? '✅ Set' : '❌ Missing',
-      rpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL ? '✅ Set' : '❌ Missing',
+      appId: _env.phantomAppId ? '✅ Set' : '❌ Missing',
+      rpcUrl: _env.solanaRpcUrl ? '✅ Set' : '❌ Missing',
     });
   }
 
   // Get the redirect URL for OAuth callbacks
   const redirectUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/auth/callback`
-    : process.env.NEXT_PUBLIC_APP_URL 
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+    : _env.appUrl 
+      ? `${_env.appUrl}/auth/callback`
       : '';
 
   return (
@@ -63,7 +64,7 @@ export default function ConnectionProvider({ children }: ConnectionProviderProps
         // This enables wallet discovery via Wallet Standard (Solana) and EIP-6963 (Ethereum)
         addressTypes: [AddressType.solana, AddressType.ethereum],
         // App ID from Phantom Portal (required for embedded providers)
-        appId: process.env.NEXT_PUBLIC_PHANTOM_APP_ID || "",
+        appId: _env.phantomAppId,
         // Authentication providers available to users
         // The modal will automatically detect and display available wallets via Wallet Standard
         providers: [
