@@ -8,31 +8,28 @@ import {
   useModal,
   useDiscoveredWallets,
   useSolana,
+  useAutoConfirm,
+  useIsExtensionInstalled,
+  WalletAddress,
+  NetworkId,
 } from "@phantom/react-sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { _env } from "@/config/_env";
 import PhantomIcon from "./icons/PhantomIcon";
 
 /**
- * Type for wallet account from useAccounts hook
- * Represents a connected wallet address with its type
- */
-interface WalletAccount {
-  address: string;
-  addressType: string;
-}
-
-/**
  * ConnectWalletButton - Main wallet connection component
  * 
- * Phantom Connect SDK (Beta 26)
+ * Phantom Connect SDK v1.0.0 (Stable Release)
  * @see https://docs.phantom.com/sdks/react-sdk
  * 
  * Uses the SDK's built-in modal for connection:
- * - useModal() hook controls the built-in connection modal
+ * - useModal() hook controls the built-in connection modal (now with close method)
  * - useSolana() hook for Solana-specific operations (signMessage, signTransaction, signAndSendTransaction)
  * - useDiscoveredWallets() detects all available wallets via Wallet Standard & EIP-6963
- * - Modal handles Google, Apple, Phantom Login, and discovered wallet connections
+ * - useAutoConfirm() for auto-confirm feature (injected provider only)
+ * - useIsExtensionInstalled() to check if Phantom extension is installed
+ * - Modal handles Google, Apple, and discovered wallet connections
  * - Theming is configured in ConnectionProvider via theme prop
  * - ConnectButton component available for simpler implementations
  */
@@ -42,23 +39,46 @@ export default function ConnectWalletButton() {
   const [copySuccess, setCopySuccess] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // SDK built-in modal hook
-  const { open: openModal, isOpened: isModalOpen } = useModal();
+  // SDK built-in modal hook (v1.0.0: now includes close method)
+  const { open: openModal, close: closeModal, isOpened: isModalOpen } = useModal();
 
   // Connection state hooks
-  const { disconnect } = useDisconnect();
-  const accounts = useAccounts() as WalletAccount[] | null;
+  const { disconnect, isDisconnecting } = useDisconnect();
+  const accounts = useAccounts() as WalletAddress[] | null;
   
-  // usePhantom provides isConnected, isLoading state
-  const { isLoading: isSDKLoading, isConnected: phantomConnected } = usePhantom();
+  // usePhantom provides comprehensive state in v1.0.0
+  // Now includes: user, allowedProviders, clearError, errors
+  const { 
+    isLoading: isSDKLoading, 
+    isConnected: phantomConnected,
+    user,
+    allowedProviders,
+  } = usePhantom();
 
-  // Beta 26: useSolana hook for Solana-specific operations
-  // Provides: address, signMessage, signTransaction, signAndSendTransaction
+  // v1.0.0: useSolana hook for Solana-specific operations
+  // Provides: signMessage, signTransaction, signAndSendTransaction
   const { solana, isAvailable: isSolanaAvailable } = useSolana();
 
+  // v1.0.0: useAutoConfirm hook for auto-confirming transactions (injected provider only)
+  // Enables seamless transaction approval without manual confirmation
+  const { 
+    enable: enableAutoConfirm, 
+    disable: disableAutoConfirm,
+    status: autoConfirmStatus,
+    supportedChains: autoConfirmChains,
+  } = useAutoConfirm();
+
+  // v1.0.0: Check if Phantom extension is installed
+  const { isInstalled: isExtensionInstalled, isLoading: isCheckingExtension } = useIsExtensionInstalled();
+
   // Wallet discovery hook - detects all available wallets (runs in background)
-  // Note: Don't block UI on this - SDK handles wallet display in modal automatically
-  const { wallets: discoveredWallets } = useDiscoveredWallets();
+  // v1.0.0: Now includes refetch method, isLoading, and error states
+  const { 
+    wallets: discoveredWallets, 
+    refetch: refetchWallets,
+    isLoading: isDiscoveryLoading,
+    error: discoveryError,
+  } = useDiscoveredWallets();
 
   // Check connected state from both accounts and phantom hook
   const isConnected = (accounts && accounts.length > 0) || phantomConnected;
@@ -105,24 +125,54 @@ export default function ConnectWalletButton() {
     fetchBalance();
   }, [isConnected, primaryAddress]);
 
-  // Log discovered wallets and Solana hook status in development
+  // Log v1.0.0 SDK features in development
   useEffect(() => {
-    if (_env.nodeEnv === 'development') {
+    if (process.env.NODE_ENV === 'development') {
+      // Log wallet discovery status
+      console.log('🔍 Wallet Discovery Status:', {
+        isLoading: isDiscoveryLoading,
+        error: discoveryError?.message || null,
+        walletsFound: discoveredWallets?.length ?? 0,
+        wallets: discoveredWallets?.map(w => ({
+          name: w.name,
+          id: w.id,
+          icon: w.icon ? '✓' : '✗',
+        })) ?? [],
+      });
+      
+      // Log discovered wallets via Wallet Standard
       if (discoveredWallets && discoveredWallets.length > 0) {
         console.log('🔍 Discovered Wallets:', discoveredWallets);
       }
+      // Log Solana hook capabilities
       if (isSolanaAvailable && solana) {
-        console.log('🟣 Solana Hook Active:', {
+        console.log('🟣 Solana Hook Active (v1.0.0):', {
           isAvailable: isSolanaAvailable,
           hasSignMessage: !!solana.signMessage,
           hasSignTransaction: !!solana.signTransaction,
           hasSignAndSendTransaction: !!solana.signAndSendTransaction,
         });
       }
+      // Log auto-confirm status (v1.0.0 feature - injected provider only)
+      if (autoConfirmStatus) {
+        console.log('⚡ Auto-Confirm Status:', autoConfirmStatus);
+      }
+      // Log extension status (v1.0.0 feature)
+      if (!isCheckingExtension) {
+        console.log('🔌 Extension Installed:', isExtensionInstalled);
+      }
+      // Log user info if connected (v1.0.0 feature)
+      if (user) {
+        console.log('👤 Connected User:', user);
+      }
+      // Log allowed providers (v1.0.0 feature)
+      if (allowedProviders && allowedProviders.length > 0) {
+        console.log('🔑 Allowed Providers:', allowedProviders);
+      }
     }
-  }, [discoveredWallets, solana, isSolanaAvailable]);
+  }, [discoveredWallets, isDiscoveryLoading, discoveryError, solana, isSolanaAvailable, autoConfirmStatus, isCheckingExtension, isExtensionInstalled, user, allowedProviders]);
 
-  // Handle disconnect
+  // Handle disconnect (v1.0.0: isDisconnecting state available)
   const handleDisconnect = useCallback(async () => {
     try {
       await disconnect();
@@ -132,6 +182,11 @@ export default function ConnectWalletButton() {
       console.error("Disconnect error:", err);
     }
   }, [disconnect]);
+
+  // Handle closing modal (v1.0.0: close method now available)
+  const handleCloseModal = useCallback(() => {
+    closeModal();
+  }, [closeModal]);
 
   // Handle copy address
   const handleCopyAddress = useCallback(() => {
@@ -235,9 +290,42 @@ export default function ConnectWalletButton() {
                 {copySuccess ? "Copied!" : "Copy Address"}
               </button>
 
+              {/* v1.0.0: Auto-Confirm Toggle (Injected Provider Only) */}
+              {isExtensionInstalled && autoConfirmChains && (
+                <button
+                  onClick={async () => {
+                    try {
+                      if (autoConfirmStatus?.enabled) {
+                        await disableAutoConfirm();
+                      } else {
+                        // Enable auto-confirm for Solana Mainnet
+                        await enableAutoConfirm({ chains: [NetworkId.SOLANA_MAINNET] });
+                      }
+                    } catch (err) {
+                      console.error("Auto-confirm toggle error:", err);
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-ink hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                  <span className="flex-1">Auto-Confirm</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${autoConfirmStatus?.enabled ? 'bg-green/20 text-green' : 'bg-gray-200 text-gray-500'}`}>
+                    {autoConfirmStatus?.enabled ? 'On' : 'Off'}
+                  </span>
+                </button>
+              )}
+
               <button
                 onClick={handleDisconnect}
-                className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-orange hover:bg-orange/10 rounded-lg transition-colors"
+                disabled={isDisconnecting}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-orange hover:bg-orange/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -247,7 +335,7 @@ export default function ConnectWalletButton() {
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                Log out
+                {isDisconnecting ? "Logging out..." : "Log out"}
               </button>
             </div>
           </div>

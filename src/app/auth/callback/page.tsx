@@ -8,15 +8,25 @@ import { Loader2 } from "lucide-react";
 /**
  * OAuth Callback Page
  * 
+ * Phantom Connect SDK v1.0.0 (Stable Release)
+ * 
  * This page handles the OAuth callback flow for Google/Apple authentication.
  * The PhantomProvider automatically processes the OAuth callback parameters
  * when this page loads. We just need to wait for connection and redirect.
+ * 
+ * v1.0.0 API Changes:
+ * - usePhantom() now returns errors.connect instead of connectError
+ * - Added clearError function to reset errors
  * 
  * @see https://docs.phantom.com/sdks/react-sdk/connect
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { isConnected, isLoading, connectError } = usePhantom();
+  // v1.0.0: errors object contains connect error, clearError to reset
+  const { isConnected, isLoading, errors, clearError } = usePhantom();
+  
+  // Get connect error from errors object (v1.0.0 API)
+  const connectError = errors?.connect;
 
   // Redirect to home once connected
   useEffect(() => {
@@ -44,7 +54,10 @@ export default function AuthCallbackPage() {
             {connectError.message || "An error occurred during authentication."}
           </p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => {
+              clearError('connect');
+              router.push("/");
+            }}
             className="mt-4 px-4 py-2 bg-brand text-white rounded-lg hover:brightness-95 transition-all"
           >
             Go Back
