@@ -43,10 +43,10 @@ interface ConnectionProviderProps {
  */
 export default function ConnectionProvider({ children }: ConnectionProviderProps) {
   // Debug: Log environment variables (only in development)
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  if (typeof window !== 'undefined' && _env.nodeEnv === 'development') {
     console.log('🔧 Phantom SDK v1.0.0 Environment Check:', {
-      appId: process.env.NEXT_PUBLIC_PHANTOM_APP_ID ? '✅ Set' : '❌ Missing',
-      rpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL ? '✅ Set' : '❌ Missing',
+      appId: _env.phantomAppId ? '✅ Set' : '❌ Missing',
+      rpcUrl: _env.solanaRpcUrl ? '✅ Set' : '❌ Missing',
     });
   }
 

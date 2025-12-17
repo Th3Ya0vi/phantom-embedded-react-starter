@@ -127,7 +127,7 @@ export default function ConnectWalletButton() {
 
   // Log v1.0.0 SDK features in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (_env.nodeEnv === 'development') {
       // Log wallet discovery status
       console.log('🔍 Wallet Discovery Status:', {
         isLoading: isDiscoveryLoading,
