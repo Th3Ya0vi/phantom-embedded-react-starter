@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   useDisconnect,
   useAccounts,
@@ -17,49 +17,88 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import PhantomIcon from "./icons/PhantomIcon";
 
 /**
+ * Connected wallet info - tracks which wallet the user connected with
+ */
+interface ConnectedWalletInfo {
+  id: string;
+  name: string;
+  icon: string;
+  provider: "embedded" | "injected";
+}
+
+/**
+ * WalletIcon - Renders the wallet icon dynamically
+ * Shows the connected wallet's icon (Backpack, Solflare, etc.)
+ * Falls back to PhantomIcon for embedded wallets or missing icons
+ */
+function WalletIcon({ 
+  walletInfo, 
+  className = "w-6 h-6",
+  fallbackClassName = "w-6 h-6"
+}: { 
+  walletInfo: ConnectedWalletInfo | null;
+  className?: string;
+  fallbackClassName?: string;
+}) {
+  // Embedded provider or no info → Phantom icon
+  if (!walletInfo || walletInfo.provider === "embedded") {
+    return <PhantomIcon className={fallbackClassName} />;
+  }
+
+  // Empty icon → Phantom icon fallback (known issue with Phantom adapter)
+  if (!walletInfo.icon || walletInfo.icon === "") {
+    return <PhantomIcon className={fallbackClassName} />;
+  }
+
+  // Render the wallet's icon from URL (data URI or https)
+  return (
+    <img 
+      src={walletInfo.icon} 
+      alt={`${walletInfo.name} icon`}
+      className={className}
+      onError={(e) => {
+        e.currentTarget.style.display = 'none';
+      }}
+    />
+  );
+}
+
+/**
  * ConnectWalletButton - Main wallet connection component
  * 
  * Phantom Connect SDK v1.0.0 (Stable Release)
  * @see https://docs.phantom.com/sdks/react-sdk
  * 
- * Uses the SDK's built-in modal for connection:
- * - useModal() hook controls the built-in connection modal (now with close method)
- * - useSolana() hook for Solana-specific operations (signMessage, signTransaction, signAndSendTransaction)
- * - useDiscoveredWallets() detects all available wallets via Wallet Standard & EIP-6963
- * - useAutoConfirm() for auto-confirm feature (injected provider only)
- * - useIsExtensionInstalled() to check if Phantom extension is installed
- * - Modal handles Google, Apple, and discovered wallet connections
- * - Theming is configured in ConnectionProvider via theme prop
- * - ConnectButton component available for simpler implementations
+ * Features:
+ * - useModal() for the built-in connection modal
+ * - useDiscoveredWallets() for wallet discovery with icons
+ * - useSolana() for Solana-specific operations
+ * - useAutoConfirm() for auto-confirm (injected provider only)
+ * - Dynamic wallet icon display after connection
  */
 export default function ConnectWalletButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [connectedWalletInfo, setConnectedWalletInfo] = useState<ConnectedWalletInfo | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // SDK built-in modal hook (v1.0.0: now includes close method)
+  // SDK hooks
   const { open: openModal, close: closeModal, isOpened: isModalOpen } = useModal();
-
-  // Connection state hooks
   const { disconnect, isDisconnecting } = useDisconnect();
   const accounts = useAccounts() as WalletAddress[] | null;
   
-  // usePhantom provides comprehensive state in v1.0.0
-  // Now includes: user, allowedProviders, clearError, errors
+  // Type-erase usePhantom to access internal wallet info for icon detection
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const phantomHook = usePhantom() as any;
   const { 
     isLoading: isSDKLoading, 
     isConnected: phantomConnected,
     user,
-    allowedProviders,
-  } = usePhantom();
+  } = phantomHook;
 
-  // v1.0.0: useSolana hook for Solana-specific operations
-  // Provides: signMessage, signTransaction, signAndSendTransaction
   const { solana, isAvailable: isSolanaAvailable } = useSolana();
 
-  // v1.0.0: useAutoConfirm hook for auto-confirming transactions (injected provider only)
-  // Enables seamless transaction approval without manual confirmation
   const { 
     enable: enableAutoConfirm, 
     disable: disableAutoConfirm,
@@ -67,24 +106,103 @@ export default function ConnectWalletButton() {
     supportedChains: autoConfirmChains,
   } = useAutoConfirm();
 
-  // v1.0.0: Check if Phantom extension is installed
-  const { isInstalled: isExtensionInstalled, isLoading: isCheckingExtension } = useIsExtensionInstalled();
+  const { isInstalled: isExtensionInstalled } = useIsExtensionInstalled();
 
-  // Wallet discovery hook - detects all available wallets (runs in background)
-  // v1.0.0: Now includes refetch method, isLoading, and error states
   const { 
     wallets: discoveredWallets, 
-    refetch: refetchWallets,
-    isLoading: isDiscoveryLoading,
-    error: discoveryError,
   } = useDiscoveredWallets();
 
-  // Check connected state from both accounts and phantom hook
+  // Derived state
   const isConnected = (accounts && accounts.length > 0) || phantomConnected;
-
-  // Get the first account address safely from useAccounts hook
   const primaryAccount = accounts?.[0];
   const primaryAddress = primaryAccount?.address;
+
+  // Map of discovered wallets for quick lookup by id
+  const discoveredWalletsMap = useMemo(() => {
+    const map = new Map<string, { name: string; icon: string }>();
+    discoveredWallets?.forEach(wallet => {
+      map.set(wallet.id, { name: wallet.name, icon: wallet.icon || "" });
+    });
+    return map;
+  }, [discoveredWallets]);
+
+  /**
+   * Detect which wallet the user connected with
+   * Strategy:
+   * 1. Check if embedded (Google/Apple) → use Phantom icon
+   * 2. Check SDK internal state for wallet id/name/icon
+   * 3. Match connected address against window providers
+   * 4. Single discovered wallet fallback
+   */
+  useEffect(() => {
+    if (!isConnected) {
+      setConnectedWalletInfo(null);
+      return;
+    }
+
+    // Check if connected via embedded provider (Google/Apple)
+    const isEmbedded = user?.authProvider === 'google' || user?.authProvider === 'apple';
+    if (isEmbedded) {
+      setConnectedWalletInfo({ id: 'phantom-embedded', name: 'Phantom', icon: '', provider: 'embedded' });
+      return;
+    }
+
+    // Try SDK internal state for wallet info
+    const sdkInstance = phantomHook?.sdk;
+    const possibleWalletId = 
+      phantomHook?.wallet?.id || phantomHook?.walletId ||
+      sdkInstance?.wallet?.id || sdkInstance?.connectedWallet?.id;
+    
+    if (possibleWalletId) {
+      const discovered = discoveredWalletsMap.get(possibleWalletId);
+      setConnectedWalletInfo({
+        id: possibleWalletId,
+        name: phantomHook?.wallet?.name || discovered?.name || 'Wallet',
+        icon: phantomHook?.wallet?.icon || discovered?.icon || '',
+        provider: 'injected',
+      });
+      return;
+    }
+
+    // Match connected address against known window providers
+    if (typeof window !== 'undefined' && primaryAddress) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      const providers = [
+        { id: 'backpack', name: 'Backpack', provider: w.backpack },
+        { id: 'solflare', name: 'Solflare', provider: w.solflare },
+        { id: 'phantom', name: 'Phantom', provider: w.phantom?.solana },
+        { id: 'glow', name: 'Glow', provider: w.glow },
+        { id: 'coin98', name: 'Coin98', provider: w.coin98 },
+        { id: 'exodus', name: 'Exodus', provider: w.exodus?.solana },
+      ];
+
+      for (const { id, name, provider } of providers) {
+        if (provider?.publicKey?.toString() === primaryAddress) {
+          const discovered = discoveredWallets?.find(dw => 
+            dw.id === id || dw.id.toLowerCase().includes(id) || dw.name.toLowerCase().includes(id)
+          );
+          setConnectedWalletInfo({
+            id: discovered?.id || id,
+            name: discovered?.name || name,
+            icon: discovered?.icon || '',
+            provider: 'injected',
+          });
+          return;
+        }
+      }
+    }
+
+    // Single discovered wallet fallback
+    if (discoveredWallets?.length === 1) {
+      const wallet = discoveredWallets[0];
+      setConnectedWalletInfo({ id: wallet.id, name: wallet.name, icon: wallet.icon || '', provider: 'injected' });
+      return;
+    }
+
+    // Unable to determine → fallback
+    setConnectedWalletInfo({ id: 'unknown', name: 'Wallet', icon: '', provider: 'injected' });
+  }, [isConnected, phantomHook, user, discoveredWallets, discoveredWalletsMap, primaryAddress]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -93,101 +211,43 @@ export default function ConnectWalletButton() {
         setIsDropdownOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch balance when connected
+  // Fetch SOL balance when connected
   useEffect(() => {
     const fetchBalance = async () => {
       if (isConnected && primaryAddress) {
         try {
-          // RPC URL must be set in environment
           const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
-          if (!rpcUrl) {
-            console.warn("NEXT_PUBLIC_SOLANA_RPC_URL not configured - balance fetch skipped");
-            return;
-          }
-          
+          if (!rpcUrl) return;
           const connection = new Connection(rpcUrl);
           const publicKey = new PublicKey(primaryAddress);
           const balanceInLamports = await connection.getBalance(publicKey);
-          setBalance(balanceInLamports / 1e9); // Convert lamports to SOL
+          setBalance(balanceInLamports / 1e9);
         } catch (err) {
           console.error("Error fetching balance:", err);
           setBalance(0);
         }
       }
     };
-
     fetchBalance();
   }, [isConnected, primaryAddress]);
 
-  // Log v1.0.0 SDK features in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      // Log wallet discovery status
-      console.log('🔍 Wallet Discovery Status:', {
-        isLoading: isDiscoveryLoading,
-        error: discoveryError?.message || null,
-        walletsFound: discoveredWallets?.length ?? 0,
-        wallets: discoveredWallets?.map(w => ({
-          name: w.name,
-          id: w.id,
-          icon: w.icon ? '✓' : '✗',
-        })) ?? [],
-      });
-      
-      // Log discovered wallets via Wallet Standard
-      if (discoveredWallets && discoveredWallets.length > 0) {
-        console.log('🔍 Discovered Wallets:', discoveredWallets);
-      }
-      // Log Solana hook capabilities
-      if (isSolanaAvailable && solana) {
-        console.log('🟣 Solana Hook Active (v1.0.0):', {
-          isAvailable: isSolanaAvailable,
-          hasSignMessage: !!solana.signMessage,
-          hasSignTransaction: !!solana.signTransaction,
-          hasSignAndSendTransaction: !!solana.signAndSendTransaction,
-        });
-      }
-      // Log auto-confirm status (v1.0.0 feature - injected provider only)
-      if (autoConfirmStatus) {
-        console.log('⚡ Auto-Confirm Status:', autoConfirmStatus);
-      }
-      // Log extension status (v1.0.0 feature)
-      if (!isCheckingExtension) {
-        console.log('🔌 Extension Installed:', isExtensionInstalled);
-      }
-      // Log user info if connected (v1.0.0 feature)
-      if (user) {
-        console.log('👤 Connected User:', user);
-      }
-      // Log allowed providers (v1.0.0 feature)
-      if (allowedProviders && allowedProviders.length > 0) {
-        console.log('🔑 Allowed Providers:', allowedProviders);
-      }
-    }
-  }, [discoveredWallets, isDiscoveryLoading, discoveryError, solana, isSolanaAvailable, autoConfirmStatus, isCheckingExtension, isExtensionInstalled, user, allowedProviders]);
-
-  // Handle disconnect (v1.0.0: isDisconnecting state available)
+  // Disconnect handler
   const handleDisconnect = useCallback(async () => {
     try {
       await disconnect();
       setIsDropdownOpen(false);
       setBalance(null);
+      setConnectedWalletInfo(null);
     } catch (err) {
       console.error("Disconnect error:", err);
     }
   }, [disconnect]);
 
-  // Handle closing modal (v1.0.0: close method now available)
-  const handleCloseModal = useCallback(() => {
-    closeModal();
-  }, [closeModal]);
-
-  // Handle copy address
+  // Copy address handler
   const handleCopyAddress = useCallback(() => {
     if (primaryAddress) {
       navigator.clipboard.writeText(primaryAddress);
@@ -201,7 +261,7 @@ export default function ConnectWalletButton() {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
-  // Show loading state only while SDK initializes (not during wallet discovery)
+  // Loading state
   if (isSDKLoading) {
     return (
       <button
@@ -214,7 +274,7 @@ export default function ConnectWalletButton() {
     );
   }
 
-  // Connected state - show address and dropdown
+  // Connected state - show address with wallet icon and dropdown
   if (isConnected) {
     return (
       <div className="relative" ref={dropdownRef}>
@@ -222,10 +282,13 @@ export default function ConnectWalletButton() {
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           className="group flex items-center gap-3 px-5 py-3 bg-phantom text-white rounded-xl font-medium hover:bg-phantom-dark focus:outline-none focus:ring-2 focus:ring-phantom-light transition-all shadow-lg shadow-phantom/20"
         >
-          {/* Phantom icon */}
-          <PhantomIcon className="w-6 h-6" />
+          {/* Dynamic wallet icon - shows connected wallet's icon */}
+          <WalletIcon 
+            walletInfo={connectedWalletInfo} 
+            className="w-6 h-6 rounded-sm"
+            fallbackClassName="w-6 h-6"
+          />
 
-          {/* Address display */}
           <span className="text-sm font-semibold">
             {primaryAddress ? formatAddress(primaryAddress) : "Connected"}
           </span>
@@ -237,12 +300,7 @@ export default function ConnectWalletButton() {
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M19 9l-7 7-7-7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
 
@@ -252,11 +310,19 @@ export default function ConnectWalletButton() {
             {/* Account Info */}
             <div className="p-4 border-b border-gray-200 bg-gradient-to-br from-phantom/5 to-transparent">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-phantom to-phantom-dark flex items-center justify-center p-2">
-                  <PhantomIcon className="w-full h-full" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-phantom to-phantom-dark flex items-center justify-center p-2 overflow-hidden">
+                  <WalletIcon 
+                    walletInfo={connectedWalletInfo} 
+                    className="w-full h-full object-contain"
+                    fallbackClassName="w-full h-full"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted mb-1">Connected Account</p>
+                  <p className="text-xs text-muted mb-1">
+                    {connectedWalletInfo?.name && connectedWalletInfo.name !== 'Wallet' 
+                      ? `Connected via ${connectedWalletInfo.name}` 
+                      : 'Connected Account'}
+                  </p>
                   <p className="text-sm font-mono font-semibold text-ink truncate">
                     {primaryAddress || "Unknown"}
                   </p>
@@ -274,22 +340,18 @@ export default function ConnectWalletButton() {
 
             {/* Actions */}
             <div className="p-2">
+              {/* Copy Address */}
               <button
                 onClick={handleCopyAddress}
                 className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-ink hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
                 {copySuccess ? "Copied!" : "Copy Address"}
               </button>
 
-              {/* v1.0.0: Auto-Confirm Toggle (Injected Provider Only) */}
+              {/* Auto-Confirm Toggle (Injected Provider Only) */}
               {isExtensionInstalled && autoConfirmChains && (
                 <button
                   onClick={async () => {
@@ -297,7 +359,6 @@ export default function ConnectWalletButton() {
                       if (autoConfirmStatus?.enabled) {
                         await disableAutoConfirm();
                       } else {
-                        // Enable auto-confirm for Solana Mainnet
                         await enableAutoConfirm({ chains: [NetworkId.SOLANA_MAINNET] });
                       }
                     } catch (err) {
@@ -307,12 +368,7 @@ export default function ConnectWalletButton() {
                   className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-ink hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   <span className="flex-1">Auto-Confirm</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${autoConfirmStatus?.enabled ? 'bg-green/20 text-green' : 'bg-gray-200 text-gray-500'}`}>
@@ -321,18 +377,14 @@ export default function ConnectWalletButton() {
                 </button>
               )}
 
+              {/* Disconnect */}
               <button
                 onClick={handleDisconnect}
                 disabled={isDisconnecting}
                 className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-orange hover:bg-orange/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 {isDisconnecting ? "Logging out..." : "Log out"}
               </button>

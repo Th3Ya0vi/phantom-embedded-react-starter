@@ -3,6 +3,9 @@
 import Image from "next/image";
 import ConnectWalletButton from "@/components/ConnectWalletButton";
 import TransactionDemo from "@/components/TransactionDemo";
+import SignMessageDemo from "@/components/SignMessageDemo";
+import SolanaKitTransactionDemo from "@/components/SolanaKitTransactionDemo";
+import CustomTransferDemo from "@/components/CustomTransferDemo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAccounts } from "@phantom/react-sdk";
 
@@ -45,11 +48,22 @@ export default function Home() {
               <ConnectWalletButton />
             </div>
 
-            {/* Transaction Demo - Only shows when connected */}
+            {/* Transaction Demos - Only shows when connected */}
             {isConnected && (
-              <div className="pt-6 border-t border-gray-200">
-                <TransactionDemo />
-              </div>
+              <>
+                <div className="pt-6 border-t border-gray-200">
+                  <TransactionDemo />
+                </div>
+                <div className="pt-6 border-t border-gray-200">
+                  <SolanaKitTransactionDemo />
+                </div>
+                <div className="pt-6 border-t border-gray-200">
+                  <CustomTransferDemo />
+                </div>
+                <div className="pt-6 border-t border-gray-200">
+                  <SignMessageDemo />
+                </div>
+              </>
             )}
 
             {/* Info Section - Only shows when not connected */}
@@ -61,7 +75,7 @@ export default function Home() {
                 <ul className="space-y-3 text-text-default">
                   <li className="flex items-start gap-3">
                     <span className="text-brand font-bold">1.</span>
-                    <span>Click "Login with Phantom" above</span>
+                    <span>Click &quot;Login with Phantom&quot; above</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="text-brand font-bold">2.</span>

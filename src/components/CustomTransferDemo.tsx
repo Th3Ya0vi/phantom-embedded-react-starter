@@ -3,7 +3,10 @@
 import { useState, useCallback } from "react";
 import { useSolana, usePhantom } from "@phantom/react-sdk";
 import {
-  Connection,
+  createSolanaRpc,
+  address,
+} from "@solana/kit";
+import {
   PublicKey,
   Transaction,
   SystemProgram,
@@ -11,36 +14,36 @@ import {
 } from "@solana/web3.js";
 
 /**
- * TransactionDemo - Demonstrates embedded wallet transaction capabilities
+ * CustomTransferDemo - Transfer SOL to a custom address using @solana/kit
  * 
- * Phantom Connect SDK v1.0.0 (Stable Release)
- * 
- * The login itself verifies ownership (OAuth proves identity).
- * This demo shows seamless one-click transactions - no extension popups!
- * 
- * @see https://docs.phantom.com/sdks/react-sdk/sign-and-send-transaction
+ * This component allows you to send SOL to a specific address.
+ * Uses @solana/kit RPC client for blockchain interactions.
  */
-export default function TransactionDemo() {
+export default function CustomTransferDemo() {
   const { solana, isAvailable } = useSolana();
   const { isConnected } = usePhantom();
 
+  // Default destination address
+  const DEFAULT_DESTINATION = "4hesbhr1zKz5Pmy7FQvJD5fETCNNa3T2CE6qS9q5Dmsq";
+  
   // UI state
   const [isSendingTx, setIsSendingTx] = useState(false);
+  const [destinationAddress, setDestinationAddress] = useState(DEFAULT_DESTINATION);
+  const [transferAmount, setTransferAmount] = useState("0.001");
   const [result, setResult] = useState<{
     type: "success" | "error";
     message: string;
     signature?: string;
   } | null>(null);
 
-  // Clear result after 10 seconds (longer to allow clicking link)
+  // Clear result after 10 seconds
   const showResult = useCallback((type: "success" | "error", message: string, signature?: string) => {
     setResult({ type, message, signature });
     setTimeout(() => setResult(null), 10000);
   }, []);
 
   /**
-   * Send SOL - Demonstrates one-click payments
-   * Sends to SELF for safety (only loses ~0.000005 SOL tx fee)
+   * Send SOL to the specified destination address
    */
   const handleSendTransaction = useCallback(async () => {
     if (!isAvailable || !solana?.signAndSendTransaction) {
@@ -48,49 +51,66 @@ export default function TransactionDemo() {
       return;
     }
 
+    // Validate destination address
+    try {
+      new PublicKey(destinationAddress);
+    } catch {
+      showResult("error", "Invalid destination address");
+      return;
+    }
+
+    // Validate amount
+    const amount = parseFloat(transferAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showResult("error", "Please enter a valid amount");
+      return;
+    }
+
     setIsSendingTx(true);
     try {
-      // v1.0.0: getPublicKey returns string | null, must check for null
+      // Get user's public key
       const publicKey = await solana.getPublicKey();
       if (!publicKey) {
         throw new Error("Wallet not connected or public key unavailable");
       }
       const userPubkey = new PublicKey(publicKey);
+      const destinationPubkey = new PublicKey(destinationAddress);
 
-      // Connect to Solana - RPC URL must be set in env
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
-      if (!rpcUrl) {
-        throw new Error("NEXT_PUBLIC_SOLANA_RPC_URL not configured");
-      }
-      const connection = new Connection(rpcUrl);
-      const { blockhash } = await connection.getLatestBlockhash();
+      // Get RPC URL from environment
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+      
+      // Create RPC client using @solana/kit
+      const rpc = createSolanaRpc(rpcUrl);
+      
+      // Get latest blockhash using @solana/kit
+      const latestBlockhashResponse = await rpc.getLatestBlockhash().send();
+      const latestBlockhash = latestBlockhashResponse.value;
 
-      // Create transfer (to self for demo safety)
+      // Create transfer transaction
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: userPubkey,
-          toPubkey: userPubkey, // Safe: returns to same wallet
-          lamports: 0.001 * LAMPORTS_PER_SOL,
+          toPubkey: destinationPubkey,
+          lamports: amount * LAMPORTS_PER_SOL,
         })
       );
-      transaction.recentBlockhash = blockhash;
+      transaction.recentBlockhash = latestBlockhash.blockhash;
       transaction.feePayer = userPubkey;
 
-      // Sign and send in one step - the embedded wallet magic!
-      // v1.0.0: signAndSendTransaction returns { signature: string }
+      // Sign and send transaction
       const txResult = await solana.signAndSendTransaction(transaction);
       
       console.log("✅ Transaction sent:", txResult);
-      // v1.0.0: Result contains signature property
       const txId = txResult.signature || "";
-      showResult("success", `✓ Sent! TX: ${txId.slice(0, 16)}...`, txId);
+      showResult("success", `✓ Sent ${transferAmount} SOL! TX: ${txId.slice(0, 16)}...`, txId);
     } catch (error) {
       console.error("❌ Transaction error:", error);
       showResult("error", error instanceof Error ? error.message : "Transaction failed");
     } finally {
       setIsSendingTx(false);
     }
-  }, [solana, isAvailable, showResult]);
+  }, [solana, isAvailable, destinationAddress, transferAmount, showResult]);
+
 
   // Don't show if not connected
   if (!isConnected) {
@@ -100,14 +120,50 @@ export default function TransactionDemo() {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-ink">
-        Send Transaction (@solana/web3.js)
+        Custom Transfer (@solana/kit)
       </h3>
       
       <p className="text-sm text-text-muted">
-        Send SOL using @solana/web3.js with Phantom SDK.
+        Send SOL to a custom address using @solana/kit RPC client.
       </p>
 
-      {/* Send Transaction Button */}
+      {/* Destination Address Input */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-ink">
+          Destination Address
+        </label>
+        <input
+          type="text"
+          value={destinationAddress}
+          onChange={(e) => setDestinationAddress(e.target.value)}
+          placeholder="Enter Solana address"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-ink bg-bg-surface focus:outline-none focus:ring-2 focus:ring-brand"
+        />
+        <button
+          onClick={() => setDestinationAddress(DEFAULT_DESTINATION)}
+          className="text-xs text-link hover:underline"
+        >
+          Use default: {DEFAULT_DESTINATION.slice(0, 8)}...
+        </button>
+      </div>
+
+      {/* Amount Input */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-ink">
+          Amount (SOL)
+        </label>
+        <input
+          type="number"
+          step="0.001"
+          min="0.001"
+          value={transferAmount}
+          onChange={(e) => setTransferAmount(e.target.value)}
+          placeholder="0.001"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-ink bg-bg-surface focus:outline-none focus:ring-2 focus:ring-brand"
+        />
+      </div>
+
+      {/* Send Button */}
       <button
         onClick={handleSendTransaction}
         disabled={!isAvailable || isSendingTx}
@@ -126,7 +182,7 @@ export default function TransactionDemo() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            Send 0.001 SOL
+            Send SOL
           </>
         )}
       </button>
@@ -161,7 +217,7 @@ export default function TransactionDemo() {
       
       {/* Info footer */}
       <p className="text-xs text-text-muted">
-        💡 Demo sends SOL to yourself (only tx fee ~$0.001 lost)
+        💡 Uses @solana/kit RPC client for blockchain interactions
       </p>
     </div>
   );
