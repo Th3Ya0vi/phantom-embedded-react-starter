@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   useDisconnect,
   useAccounts,
@@ -88,14 +88,11 @@ export default function ConnectWalletButton() {
   const { disconnect, isDisconnecting } = useDisconnect();
   const accounts = useAccounts() as WalletAddress[] | null;
   
-  // Type-erase usePhantom to access internal wallet info for icon detection
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const phantomHook = usePhantom() as any;
   const { 
     isLoading: isSDKLoading, 
     isConnected: phantomConnected,
     user,
-  } = phantomHook;
+  } = usePhantom();
 
   const { solana, isAvailable: isSolanaAvailable } = useSolana();
 
@@ -117,22 +114,10 @@ export default function ConnectWalletButton() {
   const primaryAccount = accounts?.[0];
   const primaryAddress = primaryAccount?.address;
 
-  // Map of discovered wallets for quick lookup by id
-  const discoveredWalletsMap = useMemo(() => {
-    const map = new Map<string, { name: string; icon: string }>();
-    discoveredWallets?.forEach(wallet => {
-      map.set(wallet.id, { name: wallet.name, icon: wallet.icon || "" });
-    });
-    return map;
-  }, [discoveredWallets]);
-
   /**
-   * Detect which wallet the user connected with
-   * Strategy:
-   * 1. Check if embedded (Google/Apple) → use Phantom icon
-   * 2. Check SDK internal state for wallet id/name/icon
-   * 3. Match connected address against window providers
-   * 4. Single discovered wallet fallback
+   * Detect which wallet the user connected with.
+   * ConnectResult.wallet carries the wallet info directly from the SDK.
+   * Falls back to discoveredWallets lookup by walletId.
    */
   useEffect(() => {
     if (!isConnected) {
@@ -140,69 +125,40 @@ export default function ConnectWalletButton() {
       return;
     }
 
-    // Check if connected via embedded provider (Google/Apple)
+    // Embedded provider (Google/Apple OAuth)
     const isEmbedded = user?.authProvider === 'google' || user?.authProvider === 'apple';
     if (isEmbedded) {
       setConnectedWalletInfo({ id: 'phantom-embedded', name: 'Phantom', icon: '', provider: 'embedded' });
       return;
     }
 
-    // Try SDK internal state for wallet info
-    const sdkInstance = phantomHook?.sdk;
-    const possibleWalletId = 
-      phantomHook?.wallet?.id || phantomHook?.walletId ||
-      sdkInstance?.wallet?.id || sdkInstance?.connectedWallet?.id;
-    
-    if (possibleWalletId) {
-      const discovered = discoveredWalletsMap.get(possibleWalletId);
+    // SDK provides wallet info directly via ConnectResult
+    if (user?.wallet) {
       setConnectedWalletInfo({
-        id: possibleWalletId,
-        name: phantomHook?.wallet?.name || discovered?.name || 'Wallet',
-        icon: phantomHook?.wallet?.icon || discovered?.icon || '',
+        id: user.wallet.id,
+        name: user.wallet.name,
+        icon: user.wallet.icon || '',
         provider: 'injected',
       });
       return;
     }
 
-    // Match connected address against known window providers
-    if (typeof window !== 'undefined' && primaryAddress) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as any;
-      const providers = [
-        { id: 'backpack', name: 'Backpack', provider: w.backpack },
-        { id: 'solflare', name: 'Solflare', provider: w.solflare },
-        { id: 'phantom', name: 'Phantom', provider: w.phantom?.solana },
-        { id: 'glow', name: 'Glow', provider: w.glow },
-        { id: 'coin98', name: 'Coin98', provider: w.coin98 },
-        { id: 'exodus', name: 'Exodus', provider: w.exodus?.solana },
-      ];
-
-      for (const { id, name, provider } of providers) {
-        if (provider?.publicKey?.toString() === primaryAddress) {
-          const discovered = discoveredWallets?.find(dw => 
-            dw.id === id || dw.id.toLowerCase().includes(id) || dw.name.toLowerCase().includes(id)
-          );
-          setConnectedWalletInfo({
-            id: discovered?.id || id,
-            name: discovered?.name || name,
-            icon: discovered?.icon || '',
-            provider: 'injected',
-          });
-          return;
-        }
+    // Fallback: match walletId against discovered wallets
+    if (user?.walletId && discoveredWallets?.length) {
+      const match = discoveredWallets.find(w => w.id === user.walletId);
+      if (match) {
+        setConnectedWalletInfo({
+          id: match.id,
+          name: match.name,
+          icon: match.icon || '',
+          provider: 'injected',
+        });
+        return;
       }
     }
 
-    // Single discovered wallet fallback
-    if (discoveredWallets?.length === 1) {
-      const wallet = discoveredWallets[0];
-      setConnectedWalletInfo({ id: wallet.id, name: wallet.name, icon: wallet.icon || '', provider: 'injected' });
-      return;
-    }
-
-    // Unable to determine → fallback
     setConnectedWalletInfo({ id: 'unknown', name: 'Wallet', icon: '', provider: 'injected' });
-  }, [isConnected, phantomHook, user, discoveredWallets, discoveredWalletsMap, primaryAddress]);
+  }, [isConnected, user, discoveredWallets]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
