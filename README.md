@@ -196,7 +196,7 @@ function MyComponent() {
 
 ### Phantom Portal Setup
 
-1. Go to [Phantom Portal](https://phantom.app/portal)
+1. Go to [Phantom Portal](https://phantom.com/portal)
 2. Create/select your app
 3. Copy your App ID
 4. Add your redirect URLs to the allowlist (e.g., `http://localhost:3000/auth/callback`)
@@ -220,7 +220,7 @@ ISC
 - [Phantom React SDK](https://docs.phantom.com/sdks/react-sdk) - SDK documentation
 - [Sign & Send Transactions](https://docs.phantom.com/sdks/react-sdk/sign-and-send-transaction) - Transaction signing guide
 - [Connect Flow](https://docs.phantom.com/sdks/react-sdk/connect) - OAuth connection setup
-- [Phantom Portal](https://phantom.app/portal) - App configuration
+- [Phantom Portal](https://phantom.com/portal) - App configuration
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Solana Web3.js Documentation](https://solana-labs.github.io/solana-web3.js/)
 
