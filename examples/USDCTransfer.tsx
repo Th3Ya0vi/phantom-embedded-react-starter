@@ -200,8 +200,7 @@ export default function USDCTransfer({
     setResult(null);
 
     try {
-      // Get sender's public key
-      const publicKey = await solana.getPublicKey();
+      const publicKey = solana.publicKey;
       if (!publicKey) {
         throw new Error("Wallet not connected");
       }
@@ -330,7 +329,7 @@ export default function USDCTransfer({
  * 
  * async function handleTicketPurchase() {
  *   const { solana } = useSolana();
- *   const publicKey = await solana.getPublicKey();
+ *   const publicKey = solana.publicKey;
  *   const connection = new Connection(rpcUrl);
  *   
  *   const transaction = await createUSDCTransferTransaction(

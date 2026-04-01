@@ -61,8 +61,7 @@ export function useTransactionSigner() {
       );
     }
 
-    // Get and validate public key
-    const publicKeyString = await solana.getPublicKey();
+    const publicKeyString = solana.publicKey;
     if (!publicKeyString) {
       throw new Error("Public key is not available. Please reconnect your wallet.");
     }

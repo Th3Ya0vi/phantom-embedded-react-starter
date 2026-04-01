@@ -67,7 +67,7 @@ export default function SolanaKitTransactionDemo() {
     setIsSendingTx(true);
     try {
       // Step 1: Get user's public key from Phantom SDK
-      const userPublicKeyString = await solana.getPublicKey();
+      const userPublicKeyString = solana.publicKey;
       if (!userPublicKeyString) {
         throw new Error("Wallet not connected or public key unavailable");
       }

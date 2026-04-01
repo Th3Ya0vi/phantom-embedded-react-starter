@@ -68,8 +68,7 @@ export default function CustomTransferDemo() {
 
     setIsSendingTx(true);
     try {
-      // Get user's public key
-      const publicKey = await solana.getPublicKey();
+      const publicKey = solana.publicKey;
       if (!publicKey) {
         throw new Error("Wallet not connected or public key unavailable");
       }

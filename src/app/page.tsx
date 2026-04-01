@@ -6,8 +6,9 @@ import TransactionDemo from "@/components/TransactionDemo";
 import SignMessageDemo from "@/components/SignMessageDemo";
 import SolanaKitTransactionDemo from "@/components/SolanaKitTransactionDemo";
 import CustomTransferDemo from "@/components/CustomTransferDemo";
+import BatchTransactionDemo from "@/components/BatchTransactionDemo";
 import ThemeToggle from "@/components/ThemeToggle";
-import { useAccounts } from "@phantom/react-sdk";
+import { useAccounts, ConnectButton as SDKConnectButton, AddressType } from "@phantom/react-sdk";
 
 export default function Home() {
   const accounts = useAccounts();
@@ -44,8 +45,14 @@ export default function Home() {
         <div className="bg-bg-surface rounded-2xl shadow-lg border border-gray-200 p-6 sm:p-8">
           <div className="space-y-6">
             {/* Connect Button */}
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-4">
               <ConnectWalletButton />
+
+              {/* SDK built-in ConnectButton (v1.0.7) - shows address + wallet modal when connected */}
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs text-text-muted">or use SDK&apos;s built-in button:</span>
+                <SDKConnectButton addressType={AddressType.solana} />
+              </div>
             </div>
 
             {/* Transaction Demos - Only shows when connected */}
@@ -62,6 +69,9 @@ export default function Home() {
                 </div>
                 <div className="pt-6 border-t border-gray-200">
                   <SignMessageDemo />
+                </div>
+                <div className="pt-6 border-t border-gray-200">
+                  <BatchTransactionDemo />
                 </div>
               </>
             )}

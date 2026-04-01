@@ -7,7 +7,7 @@ import bs58 from "bs58";
 /**
  * SignMessageDemo - Demonstrates message signing capabilities
  * 
- * Phantom Connect SDK v1.0.0 (Stable Release)
+ * Phantom Connect SDK v1.0.7
  * 
  * This component allows users to sign a message with their wallet.
  * Message signing is useful for authentication and proving wallet ownership.

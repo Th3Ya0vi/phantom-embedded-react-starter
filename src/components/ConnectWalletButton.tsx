@@ -10,6 +10,7 @@ import {
   useSolana,
   useAutoConfirm,
   useIsExtensionInstalled,
+  useIsPhantomLoginAvailable,
   WalletAddress,
   NetworkId,
 } from "@phantom/react-sdk";
@@ -66,15 +67,19 @@ function WalletIcon({
 /**
  * ConnectWalletButton - Main wallet connection component
  * 
- * Phantom Connect SDK v1.0.0 (Stable Release)
+ * Phantom Connect SDK v1.0.7
  * @see https://docs.phantom.com/sdks/react-sdk
  * 
  * Features:
- * - useModal() for the built-in connection modal
+ * - useModal() for the built-in connection modal (supports phantom + deeplink providers)
  * - useDiscoveredWallets() for wallet discovery with icons
  * - useSolana() for Solana-specific operations
  * - useAutoConfirm() for auto-confirm (injected provider only)
+ * - useIsPhantomLoginAvailable() to check Phantom Login support
  * - Dynamic wallet icon display after connection
+ * 
+ * Note: SDK also exports a ready-to-use <ConnectButton /> component.
+ * This custom component provides richer UX with balance, copy, and auto-confirm controls.
  */
 export default function ConnectWalletButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -104,6 +109,7 @@ export default function ConnectWalletButton() {
   } = useAutoConfirm();
 
   const { isInstalled: isExtensionInstalled } = useIsExtensionInstalled();
+  const { isAvailable: isPhantomLoginAvailable } = useIsPhantomLoginAvailable();
 
   const { 
     wallets: discoveredWallets, 
@@ -331,6 +337,17 @@ export default function ConnectWalletButton() {
                     {autoConfirmStatus?.enabled ? 'On' : 'Off'}
                   </span>
                 </button>
+              )}
+
+              {/* Phantom Login availability indicator */}
+              {isPhantomLoginAvailable && (
+                <div className="flex items-center gap-3 px-3 py-2 text-sm text-ink">
+                  <svg className="w-5 h-5 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span className="flex-1 text-text-muted">Phantom Login</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green/20 text-green">Available</span>
+                </div>
               )}
 
               {/* Disconnect */}
